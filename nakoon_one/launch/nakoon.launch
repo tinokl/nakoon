@@ -1,0 +1,4 @@
+<launch>
+	<node name="Nakoon_Sensors" pkg="nakoon_one" type="sensors.py"></node>
+<!--  <node name="Nakoon_Base" pkg="nakoon_one" type="nakoon_base.py"></node> -->
+</launch>
