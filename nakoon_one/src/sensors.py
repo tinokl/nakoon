@@ -9,7 +9,6 @@ from std_msgs.msg import String
 
 address = 0x70
 
-# test string
 class sensors:
 
   def __init__(self):
