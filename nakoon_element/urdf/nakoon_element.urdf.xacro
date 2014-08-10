@@ -1,0 +1,107 @@
+<?xml version="1.0"?>
+
+<robot xmlns:xacro="http://ros.org/wiki/xacro"
+name="mesa">
+
+<!-- Chassis -->
+
+	<link name="base_footprint">
+	</link>
+
+	<link name="base_link">
+		<inertial>
+			<mass value="12.0"/>
+			<origin xyz="0.0 0.0 0.0"/>
+			<inertia ixx="1" ixy="0" ixz="0"
+				 iyy="1" iyz="0"
+				 izz="1"/>
+		</inertial>
+		<visual name="base_visual">
+			<origin xyz="0.1 0.01 0" rpy="1.5757105 0 0"/>
+			<geometry>
+				<mesh filename="package://tedusar_mesa_element/meshes/mesa_body.stl" scale="0.001 0.001 0.001"/>
+			</geometry>
+			<material name="Red">
+				<color rgba="1.0 0.0 0.0 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin xyz="0.04 0 0.1" rpy="0 0 0"/>
+			<geometry>
+				<box size="0.70 0.35 0.20"/>
+			</geometry>
+		</collision>
+	</link>
+
+	 <joint name="footprint_base_joint" type="fixed">
+		<origin xyz="0 0.0 0.1" rpy="0 0 0"/>
+		<parent link="base_footprint"/>
+		<child link="base_link"/>
+	 </joint>
+
+	<link name="left_track_link">
+		<inertial>
+			<mass value="0.01"/> <!-- dummy mass -->
+			<origin xyz="0.01 0.01 0.01"/>
+			<inertia ixx="1" ixy="0" ixz="0"
+				 iyy="1" iyz="0"
+				 izz="1"/>
+		</inertial>
+		<visual name="base_visual">
+			<origin xyz="0.1 0.01 0" rpy="1.5757105 0 0"/>
+			<geometry>
+				<mesh filename="package://tedusar_mesa_element/meshes/mesa_left_track.stl" scale="0.001 0.001 0.001"/>
+			</geometry>
+			<material name="Black">
+				<color rgba="0.0 0.0 0.0 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin xyz="0.03 0.235 0.055" rpy="0 0 0"/>
+			<geometry>
+				<box size="0.75 0.1 0.31"/>
+			</geometry>
+		</collision>
+	</link>
+
+	 <joint name="left_track_base_joint" type="fixed">
+		<origin xyz="0 0.0 0.0" rpy="0 0 0"/>
+		<parent link="base_link"/>
+		<child link="left_track_link"/>
+	 </joint>
+
+
+	<link name="right_track_link">
+		<inertial>
+			<mass value="0.01"/> <!-- dummy mass -->
+			<origin xyz="0.01 0.01 0.01"/>
+			<inertia ixx="1" ixy="0" ixz="0"
+				 iyy="1" iyz="0"
+				 izz="1"/>
+		</inertial>
+		<visual name="base_visual">
+			<origin xyz="0.1 0.01 0" rpy="1.5757105 0 0"/>
+			<geometry>
+				<mesh filename="package://tedusar_mesa_element/meshes/mesa_right_track.stl" scale="0.001 0.001 0.001"/>
+			</geometry>
+			<material name="Black">
+				<color rgba="0.0 0.0 0.0 1.0"/>
+			</material>
+		</visual>
+		<collision>
+			<origin xyz="0.03 -0.235 0.055" rpy="0 0 0"/>
+			<geometry>
+				<box size="0.75 0.1 0.31"/>
+			</geometry>
+		</collision>
+	</link>
+
+	 <joint name="right_track_base_joint" type="fixed">
+		<origin xyz="0 0.0 0.0" rpy="0 0 0"/>
+		<parent link="base_link"/>
+		<child link="right_track_link"/>
+	 </joint>
+
+
+
+</robot>
