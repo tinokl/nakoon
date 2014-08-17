@@ -198,9 +198,15 @@ void  NakoonElement::setVelocity(double trans, double rot)
 void  NakoonElement::sendCmd()
 {
 	if (left_track_vel_ == 0 && right_track_vel_ == 0)
+	{
+		ROS_ERROR("Stopping Motors");
 		stopMotors();
+	}
 	else
+	{
+		ROS_ERROR("Starting Motors");
 		driveMotors();
+	}
 	/*
 	++dead_man_counter_;
 

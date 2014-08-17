@@ -91,7 +91,7 @@ protected:
 
     // new
     int fd;							// File descriptor
-    char* fileName;					// Name of the port we will be using
+    char const* fileName;					// Name of the port we will be using
     int  address;					// Address of MD25 shifted one bit
     unsigned char buf[10];			// Buffer for data being read/ written on the i2c bus
     // new
