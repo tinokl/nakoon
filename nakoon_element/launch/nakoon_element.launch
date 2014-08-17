@@ -11,8 +11,6 @@
         <param name="raw_odometry_factor"  type="double"  value="0.0000016129"/>
         <param name="frame_id"             type="string"  value="/odom"/>
         <param name="child_frame_id"       type="string"  value="/robot_footprint"/>
-
-	
     </node>
 
     <!-- static transform from odom to robot_footprint (if publish_tf == false)-->

@@ -122,7 +122,6 @@ void NakoonElement::init(const NakoonElementConfig &robot_config)
     		ROS_ERROR("Software version: %u\n", buf[0]);
     	}
 
-    	/*
     	buf[0] = 15;												// Mode Register
     	buf[1] = 1;												    // Set Mode to 1
 
@@ -130,7 +129,6 @@ void NakoonElement::init(const NakoonElementConfig &robot_config)
     		ROS_ERROR("Error writing to i2c slave\n");
     		exit(1);
     	}
-    	*/
 
     	resetEncoders();											// Reset the encoder values to 0
 
@@ -189,7 +187,7 @@ void  NakoonElement::sendCmd()
 	else
 	{
 		buf[0] = 0;													// Register to set speed of motor 1
-		buf[1] = 200;												// speed to be set
+		buf[1] = left_track_vel_;												// speed to be set
 
 		if ((write(fd, buf, 2)) != 2) {
 			ROS_ERROR("Error writing to i2c slave\n");
@@ -197,7 +195,7 @@ void  NakoonElement::sendCmd()
 		}
 
 		buf[0] = 1;													// motor 2 speed
-		buf[1] = 200;
+		buf[1] = right_track_vel_;
 
 		if ((write(fd, buf, 2)) != 2) {
 			ROS_ERROR("Error writing to i2c slave\n");
