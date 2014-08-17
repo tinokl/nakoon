@@ -53,7 +53,6 @@ namespace NakoonElement
 struct NakoonElementConfig
 {
 	std::string file_name;
-    int address;
 
     double odometry_rate;
     double cmd_rate;

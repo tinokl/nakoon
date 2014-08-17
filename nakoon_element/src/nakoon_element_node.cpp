@@ -73,7 +73,6 @@ void NakoonElementNode::init()
 
     NakoonElementConfig robot_config;
     private_nh.param<string>("file_name", robot_config.file_name, string("/dev/i2c-1"));
-    private_nh.param<int>("address", robot_config.address, 0x58);
 
     private_nh.param<double>("odometry_rate", robot_config.odometry_rate, 10.0);
     private_nh.param<bool>("publish_tf", robot_config.publish_tf, true);

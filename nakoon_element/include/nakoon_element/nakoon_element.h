@@ -86,7 +86,8 @@ protected:
 
 	ros::NodeHandle nh_;
 
-    int fd_;							// File descriptor
+    int fd_;						// File descriptor
+    int address_;
     char const* file_name_;			// Name of the port we will be using
     unsigned char buf_[10];			// Buffer for data being read/ written on the i2c bus
 

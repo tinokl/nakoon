@@ -81,7 +81,7 @@ void NakoonElement::init(const NakoonElementConfig &robot_config)
     file_name_ = robot_config.file_name.c_str();
 
     //fileName = "/dev/i2c-1"; // Name of the port we will be using
-    //address = 0x58;			 // Address of MD25 shifted one bit
+    address_ = 0x58;			 // Address of MD25 shifted one bit
 
     try
     {
@@ -99,7 +99,7 @@ void NakoonElement::init(const NakoonElementConfig &robot_config)
     	}
 
     	// Set the port options and set the address of the device we wish to speak to
-    	if (ioctl(fd_, I2C_SLAVE, robot_config_.address) < 0)
+    	if (ioctl(fd_, I2C_SLAVE, address_) < 0)
     	{
     		ROS_ERROR("Unable to get bus access to talk to slave\n");
     		exit(1);
