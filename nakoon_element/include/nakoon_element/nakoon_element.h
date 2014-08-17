@@ -135,17 +135,8 @@ protected:
 
     void readCallback(const boost::system::error_code &error, std::size_t bytes_transferred);
 
-    void sendMessage(const std::string &msg);
-
-    void resetErrors();
-
-    void restartMotors();
-
     long readEncoderValues(void); // Reads encoder data for both motors and displays to the screen
     void resetEncoders(void);	  // Resets the encoders to 0
-    void driveMotors(void);		  // Drive the motors forwards
-    void stopMotors(void);		  // Stop the motors
-
 
 };
 

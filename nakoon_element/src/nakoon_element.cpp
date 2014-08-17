@@ -154,25 +154,32 @@ void NakoonElement::run()
  */
 void  NakoonElement::setVelocity(double trans, double rot)
 {
-    if(trans > robot_config_.max_trans_velocity)
-    {
-        trans = robot_config_.max_trans_velocity;
-        ROS_WARN_STREAM("NakoonElement::setVelocity: Trans Velocity to high: " << trans << ">" << robot_config_.max_trans_velocity);
-    }
+	// Mode 1
+	// speed registers are interpreted as signed values.
+	// literal speeds in the range of
+	// -128 (Full Reverse)
+	// 0 (Stop)
+	// 127 (Full Forward).
 
-    if(rot > robot_config_.max_rot_velocity)
-    {
-        rot = robot_config_.max_rot_velocity;
-        ROS_WARN_STREAM("NakoonElement::setVelocity: Rot Velocity to high: " << rot << ">" << robot_config_.max_rot_velocity);
-    }
-
-    //rot = rot * robot_config_.rotation_correction;
+    rot = rot * robot_config_.rotation_correction;
 
     double vel_left  = trans - 0.5 * rot * robot_config_.wheel_base;
     double vel_right = trans + 0.5 * rot * robot_config_.wheel_base;
 
     left_track_vel_ =  (int32_t) (vel_left * robot_config_.velocity_raw_factor);
     right_track_vel_ =  (int32_t) (vel_right * robot_config_.velocity_raw_factor);
+
+    if(std::abs(left_track_vel_) > robot_config_.max_trans_velocity)
+    {
+    	left_track_vel_ = robot_config_.max_trans_velocity * left_track_vel_/std::abs(left_track_vel_);
+        ROS_WARN_STREAM("NakoonElement::setVelocity: Velocity to high: " << left_track_vel_ << ">" << robot_config_.max_trans_velocity);
+    }
+
+    if(std::abs(right_track_vel_) > robot_config_.max_trans_velocity)
+    {
+    	right_track_vel_ = robot_config_.max_trans_velocity * right_track_vel_/std::abs(right_track_vel_);
+        ROS_WARN_STREAM("NakoonElement::setVelocity: Velocity to high: " << right_track_vel_ << ">" << robot_config_.max_trans_velocity);
+    }
 
     ROS_ERROR_STREAM("LEFT VEL: " << left_track_vel_);
     ROS_ERROR_STREAM("RIGHT VEL: " << right_track_vel_);
@@ -390,59 +397,6 @@ void  NakoonElement::readCallback(const boost::system::error_code &error_code, s
     */
 }
 
-/****************************************************************
- *
- */
-void  NakoonElement::sendMessage(const std::string &msg)
-{
-    ROS_DEBUG_STREAM("NakoonElement::sendMessage: " << msg);
-    boost::asio::write(serial_port_, boost::asio::buffer(msg), boost::asio::transfer_all());
-}
-
-/****************************************************************
- *
- */
-void  NakoonElement::resetErrors()
-{
-    try
-    {
-        stringstream msg_stream;
-        msg_stream << ALL_MOTOR_ADDR << "ZS" << MESSAGE_DELIMITER;
-
-        sendMessage(msg_stream.str());
-    }
-    catch (boost::system::system_error& error)
-    {
-        ROS_ERROR_STREAM("NakoonElement::resetErrors: " << error.what());
-    }
-    catch(...)
-    {
-        ROS_ERROR_STREAM("NakoonElement::resetErrors: " << "Unhandled exception!");
-    }
-}
-
-/****************************************************************
- *
- */
-void  NakoonElement::restartMotors()
-{
-    try
-    {
-        stringstream msg_stream;
-        msg_stream << ALL_MOTOR_ADDR << "END" << MESSAGE_DELIMITER << ALL_MOTOR_ADDR << "ZS" << MESSAGE_DELIMITER << ALL_MOTOR_ADDR << "RUN" << MESSAGE_DELIMITER;
-
-        sendMessage(msg_stream.str());
-    }
-    catch (boost::system::system_error& error)
-    {
-        ROS_ERROR_STREAM("NakoonElement::restartMotors: " << error.what());
-    }
-    catch(...)
-    {
-        ROS_ERROR_STREAM("NakoonElement::restartMotors: " << "Unhandled exception!");
-    }
-}
-
 void NakoonElement::resetEncoders(void) {
 	buf[0] = 16;												// Command register
 	buf[1] = 32;												// command to set decoders back to zero
@@ -474,42 +428,6 @@ long NakoonElement::readEncoderValues (void) {
 		printf("Encoder 1: %08lX   Encoder 2: %08lX\n",encoder1, encoder2);
 	}
 	return encoder1;
-}
-
-void NakoonElement::driveMotors(void){
-	buf[0] = 0;													// Register to set speed of motor 1
-	buf[1] = 200;												// speed to be set
-
-	if ((write(fd, buf, 2)) != 2) {
-		printf("Error writing to i2c slave\n");
-		exit(1);
-	}
-
-	buf[0] = 1;													// motor 2 speed
-	buf[1] = 200;
-
-	if ((write(fd, buf, 2)) != 2) {
-		printf("Error writing to i2c slave\n");
-		exit(1);
-	}
-}
-
-void NakoonElement::stopMotors(void){
-	buf[0] = 0;
-	buf[1] = 128;												// A speed of 128 stops the motor
-
-	if ((write(fd, buf, 2)) != 2) {
-		printf("Error writing to i2c slave\n");
-		exit(1);
-	}
-
-	buf[0] = 1;
-	buf[1] = 128;
-
-	if ((write(fd, buf, 2)) != 2) {
-		printf("Error writing to i2c slave\n");
-		exit(1);
-	}
 }
 
 } // end namespace NakoonElement

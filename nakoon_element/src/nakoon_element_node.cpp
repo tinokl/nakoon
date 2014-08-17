@@ -77,10 +77,10 @@ void NakoonElementNode::init()
 
     private_nh.param<double>("odometry_rate", robot_config.odometry_rate, 10.0);
     private_nh.param<bool>("publish_tf", robot_config.publish_tf, true);
-    private_nh.param<double>("max_trans_velocity", robot_config.max_trans_velocity, 0.2);
+    private_nh.param<double>("max_trans_velocity", robot_config.max_trans_velocity, 125);
     private_nh.param<double>("max_rot_velocity", robot_config.max_rot_velocity, 1.570796);
     private_nh.param<double>("wheel_base", robot_config.wheel_base, 0.47);
-    private_nh.param<double>("rotation_correction", robot_config.rotation_correction, 2.0);
+    private_nh.param<double>("rotation_correction", robot_config.rotation_correction, 1.0);
     private_nh.param<double>("velocity_raw_factor", robot_config.velocity_raw_factor, 300.0);
     private_nh.param<double>("raw_odometry_factor", robot_config.raw_odometry_factor, 0.0000016129);
     private_nh.param<double>("cmd_rate", robot_config.cmd_rate, 15.0);
