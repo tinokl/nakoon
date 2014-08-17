@@ -72,20 +72,18 @@ void NakoonElementNode::init()
     ros::NodeHandle private_nh("~");
 
     NakoonElementConfig robot_config;
-    private_nh.param<string>("port", robot_config.port, string("/dev/ttyUSB0"));
-    private_nh.param<int>("baud_rate", robot_config.baud_rate, 38400);
+    private_nh.param<string>("file_name", robot_config.file_name, string("/dev/i2c-1"));
+    private_nh.param<int>("address", robot_config.address, 0x58);
 
     private_nh.param<double>("odometry_rate", robot_config.odometry_rate, 10.0);
     private_nh.param<bool>("publish_tf", robot_config.publish_tf, true);
     private_nh.param<double>("max_trans_velocity", robot_config.max_trans_velocity, 125);
     private_nh.param<double>("max_rot_velocity", robot_config.max_rot_velocity, 1.570796);
     private_nh.param<double>("wheel_base", robot_config.wheel_base, 0.47);
-    private_nh.param<double>("rotation_correction", robot_config.rotation_correction, 1.0);
-    private_nh.param<double>("velocity_raw_factor", robot_config.velocity_raw_factor, 300.0);
+    private_nh.param<double>("rotation_correction", robot_config.rotation_correction, 0.5);
+    private_nh.param<double>("velocity_raw_factor", robot_config.velocity_raw_factor, 100.0);
     private_nh.param<double>("raw_odometry_factor", robot_config.raw_odometry_factor, 0.0000016129);
     private_nh.param<double>("cmd_rate", robot_config.cmd_rate, 15.0);
-
-    private_nh.param<int>("max_dead_man", robot_config.max_dead_man, 15);
 
     private_nh.param<std::string>("frame_id", robot_config.frame_id, std::string("odom"));
     private_nh.param<std::string>("child_frame_id", robot_config.child_frame_id, std::string("robot_footprint"));

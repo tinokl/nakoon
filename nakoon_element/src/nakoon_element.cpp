@@ -54,8 +54,6 @@ namespace NakoonElement
  */
 NakoonElement::NakoonElement(ros::NodeHandle nh) :
     nh_(nh),
-    io_service_(),
-    serial_port_(io_service_),
     dead_man_counter_(0),
     emergency_stop_(false),
     left_track_vel_(0),
@@ -71,8 +69,6 @@ NakoonElement::NakoonElement(ros::NodeHandle nh) :
  */
 NakoonElement::~NakoonElement()
 {
-    serial_port_.close();
-    io_service_.stop();
     read_thread_.join();
 }
 
@@ -82,12 +78,10 @@ NakoonElement::~NakoonElement()
 void NakoonElement::init(const NakoonElementConfig &robot_config)
 {
     robot_config_ = robot_config;
+    file_name_ = robot_config.file_name.c_str();
 
-    // new
-    fileName = "/dev/i2c-1";	// Name of the port we will be using
-    address = 0x58;			// Address of MD25 shifted one bit
-    // new
-
+    //fileName = "/dev/i2c-1"; // Name of the port we will be using
+    //address = 0x58;			 // Address of MD25 shifted one bit
 
     try
     {
@@ -97,41 +91,51 @@ void NakoonElement::init(const NakoonElementConfig &robot_config)
         odometry_tf_.header.frame_id = robot_config_.frame_id;
         odometry_tf_.child_frame_id = robot_config_.child_frame_id;
 
-    	if ((fd = open(fileName, O_RDWR)) < 0) {					// Open port for reading and writing
+        // Open port for reading and writing
+    	if ((fd_ = open(file_name_, O_RDWR)) < 0)
+    	{
     		ROS_ERROR("Failed to open i2c port\n");
     		exit(1);
     	}
 
-    	if (ioctl(fd, I2C_SLAVE, address) < 0) {					// Set the port options and set the address of the device we wish to speak to
+    	// Set the port options and set the address of the device we wish to speak to
+    	if (ioctl(fd_, I2C_SLAVE, robot_config_.address) < 0)
+    	{
     		ROS_ERROR("Unable to get bus access to talk to slave\n");
     		exit(1);
     	}
 
-    	buf[0] = 13;												// This is the register we wish to read software version from
+    	// This is the register we wish to read software version from
+    	buf_[0] = 13;
 
-    	if ((write(fd, buf, 1)) != 1) {								// Send regiter to read software from from
+    	// Send register to read software from from
+    	if ((write(fd_, buf_, 1)) != 1)
+    	{
     		ROS_ERROR("Error writing to i2c slave\n");
     		exit(1);
     	}
 
-    	if (read(fd, buf, 1) != 1) {								// Read back data into buf[]
+    	// Read back data into buf[]
+    	if (read(fd_, buf_, 1) != 1)
+    	{
     		ROS_ERROR("Unable to read from slave\n");
     		exit(1);
     	}
-    	else {
-    		ROS_ERROR("Software version: %u\n", buf[0]);
+    	else
+    	{
+    		ROS_ERROR("Software version: %u\n", buf_[0]);
     	}
 
-    	buf[0] = 15;												// Mode Register
-    	buf[1] = 1;												    // Set Mode to 1
+    	buf_[0] = 15; // Mode Register
+    	buf_[1] = 1;	 // Set Mode to 1
 
-    	if ((write(fd, buf, 2)) != 2) {
+    	if ((write(fd_, buf_, 2)) != 2) {
     		ROS_ERROR("Error writing to i2c slave\n");
     		exit(1);
     	}
 
-    	resetEncoders();											// Reset the encoder values to 0
-
+    	// Reset the encoder values to 0
+    	resetEncoders();
 
         odometry_pub_ = nh_.advertise<nav_msgs::Odometry>("odom", 10);
     }
@@ -139,14 +143,6 @@ void NakoonElement::init(const NakoonElementConfig &robot_config)
     {
         ROS_ERROR_STREAM("NakoonElement::init" << error.what());
     }
-}
-
-/****************************************************************
- *
- */
-void NakoonElement::run()
-{
-    io_service_.run();
 }
 
 /****************************************************************
@@ -161,6 +157,18 @@ void  NakoonElement::setVelocity(double trans, double rot)
 	// 0 (Stop)
 	// 127 (Full Forward).
 
+    if(std::abs(trans) > robot_config_.max_trans_velocity)
+    {
+    	trans = robot_config_.max_trans_velocity * trans/std::abs(trans);
+        ROS_WARN_STREAM("NakoonElement::setVelocity: Trans Velocity to high: " << trans << ">" << robot_config_.max_trans_velocity);
+    }
+
+    if(std::abs(rot) > robot_config_.max_rot_velocity)
+    {
+    	rot = robot_config_.max_rot_velocity * rot/std::abs(rot);
+        ROS_WARN_STREAM("NakoonElement::setVelocity: Rot Velocity to high: " << rot << ">" << robot_config_.max_trans_velocity);
+    }
+
     rot = rot * robot_config_.rotation_correction;
 
     double vel_left  = trans - 0.5 * rot * robot_config_.wheel_base;
@@ -169,42 +177,43 @@ void  NakoonElement::setVelocity(double trans, double rot)
     left_track_vel_ =  (int32_t) (vel_left * robot_config_.velocity_raw_factor);
     right_track_vel_ =  (int32_t) (vel_right * robot_config_.velocity_raw_factor);
 
-    if(std::abs(left_track_vel_) > robot_config_.max_trans_velocity)
-    {
-    	left_track_vel_ = robot_config_.max_trans_velocity * left_track_vel_/std::abs(left_track_vel_);
-        ROS_WARN_STREAM("NakoonElement::setVelocity: Velocity to high: " << left_track_vel_ << ">" << robot_config_.max_trans_velocity);
-    }
-
-    if(std::abs(right_track_vel_) > robot_config_.max_trans_velocity)
-    {
-    	right_track_vel_ = robot_config_.max_trans_velocity * right_track_vel_/std::abs(right_track_vel_);
-        ROS_WARN_STREAM("NakoonElement::setVelocity: Velocity to high: " << right_track_vel_ << ">" << robot_config_.max_trans_velocity);
-    }
-
     ROS_ERROR_STREAM("LEFT VEL: " << left_track_vel_);
     ROS_ERROR_STREAM("RIGHT VEL: " << right_track_vel_);
+
+    if(std::abs(left_track_vel_) > 125)
+    {
+    	left_track_vel_ = 125 * left_track_vel_/std::abs(left_track_vel_);
+        ROS_WARN_STREAM("NakoonElement::setVelocity: Velocity Left to high: " << left_track_vel_ << ">" << "128");
+    }
+
+    if(std::abs(right_track_vel_) > 125)
+    {
+    	right_track_vel_ = 125 * right_track_vel_/std::abs(right_track_vel_);
+        ROS_WARN_STREAM("NakoonElement::setVelocity: Velocity Right to high: " << right_track_vel_ << ">" << "128");
+    }
 
     dead_man_counter_ = 0;
 }
 
 void  NakoonElement::sendCmd()
 {
-	buf[0] = 0;													// Register to set speed of motor 1
-	buf[1] = left_track_vel_;												// speed to be set
+	buf_[0] = 0;                // Register to set speed of motor 1
+	buf_[1] = left_track_vel_;  // speed to be set
 
-	if ((write(fd, buf, 2)) != 2) {
+	if ((write(fd_, buf_, 2)) != 2)
+	{
 		ROS_ERROR("Error writing to i2c slave\n");
 		exit(1);
 	}
 
-	buf[0] = 1;													// motor 2 speed
-	buf[1] = right_track_vel_;
+	buf_[0] = 1;                // motor 2 speed
+	buf_[1] = right_track_vel_;
 
-	if ((write(fd, buf, 2)) != 2) {
+	if ((write(fd_, buf_, 2)) != 2)
+	{
 		ROS_ERROR("Error writing to i2c slave\n");
 		exit(1);
 	}
-
 
 	/*
 	++dead_man_counter_;
@@ -265,214 +274,174 @@ void NakoonElement::emergencyStop(bool stop)
 void  NakoonElement::readCallback(const boost::system::error_code &error_code, std::size_t bytes_transferred)
 {
 	/*
-    ros::Time now = ros::Time::now();
-    if(error_code)
-    {
-        ROS_ERROR_STREAM("NakoonElement::readCallback: " << boost::system::system_error(error_code).what());
-    }
-    else
-    {
-        istream is(&buffer_);
-        string new_msg;
-        getline(is, new_msg);
+	ros::Time now = ros::Time::now();
+	if(error_code)
+	{
+		ROS_ERROR_STREAM("NakoonElement::readCallback: " << boost::system::system_error(error_code).what());
+	}
+	else
+	{
+		istream is(&buffer_);
+		string new_msg;
+		getline(is, new_msg);
 
-        ROS_DEBUG_STREAM("NakoonElement::readCallback: " << new_msg);
+		ROS_DEBUG_STREAM("NakoonElement::readCallback: " << new_msg);
 
-        try
-        {
-            boost::regex reg_ex("ll=(\\-?\\d+)\\$rr=(\\-?\\d+)");
-            boost::cmatch matches;
+		try
+		{
+			boost::regex reg_ex("ll=(\\-?\\d+)\\$rr=(\\-?\\d+)");
+			boost::cmatch matches;
 
-            if(boost::regex_search(new_msg.c_str(), matches, reg_ex))
-            {
-                int32_t left_pose =  boost::lexical_cast<int32_t>(matches[1].str());
-                int32_t right_pose = boost::lexical_cast<int32_t>(matches[2].str());
+			if(boost::regex_search(new_msg.c_str(), matches, reg_ex))
+			{
+				int32_t left_pose =  boost::lexical_cast<int32_t>(matches[1].str());
+				int32_t right_pose = boost::lexical_cast<int32_t>(matches[2].str());
 
-                static bool first_call = true;
+				static bool first_call = true;
 
-                if (first_call)
-                {
-                    robot_state_.last_msg_time = ros::Time::now();
-                    robot_state_.last_left_position = left_pose;
-                    robot_state_.last_right_position = right_pose;
-                    first_call = false;
-                }
-                else
-                {
-                    int32_t delta_left_pose;
-                    if(robot_state_.last_left_position > OVERFLOW_INDOCATOR && left_pose < -OVERFLOW_INDOCATOR) // positiv overflow
-                    {
-                        delta_left_pose = (left_pose - MIN_INT32) + (MAX_INT32 - robot_state_.last_left_position);
-                    }
-                    else if(robot_state_.last_left_position < -OVERFLOW_INDOCATOR && left_pose > OVERFLOW_INDOCATOR) // negativ overflow
-                    {
-                        delta_left_pose = (left_pose - INT32_MAX) + (INT32_MIN - robot_state_.last_left_position);
-                    }
-                    else
-                    {
-                        delta_left_pose = left_pose - robot_state_.last_left_position;
-                    }
+				if (first_call)
+				{
+					robot_state_.last_msg_time = ros::Time::now();
+					robot_state_.last_left_position = left_pose;
+					robot_state_.last_right_position = right_pose;
+					first_call = false;
+				}
+				else
+				{
+					int32_t delta_left_pose;
+					if(robot_state_.last_left_position > OVERFLOW_INDOCATOR && left_pose < -OVERFLOW_INDOCATOR) // positiv overflow
+					{
+						delta_left_pose = (left_pose - MIN_INT32) + (MAX_INT32 - robot_state_.last_left_position);
+					}
+					else if(robot_state_.last_left_position < -OVERFLOW_INDOCATOR && left_pose > OVERFLOW_INDOCATOR) // negativ overflow
+					{
+						delta_left_pose = (left_pose - INT32_MAX) + (INT32_MIN - robot_state_.last_left_position);
+					}
+					else
+					{
+						delta_left_pose = left_pose - robot_state_.last_left_position;
+					}
 
-                    int32_t delta_right_pose;
-                    if(robot_state_.last_right_position > OVERFLOW_INDOCATOR && right_pose < -OVERFLOW_INDOCATOR) // positiv overflow
-                    {
-                        delta_right_pose = (right_pose - LONG_MIN) + (LONG_MAX - robot_state_.last_right_position);
-                    }
-                    else if(robot_state_.last_right_position < -OVERFLOW_INDOCATOR && right_pose > OVERFLOW_INDOCATOR) // negativ overflow
-                    {
-                        delta_right_pose = (right_pose - LONG_MAX) + (LONG_MIN - robot_state_.last_right_position);
-                    }
-                    else
-                    {
-                        delta_right_pose = right_pose - robot_state_.last_right_position;
-                    }
+					int32_t delta_right_pose;
+					if(robot_state_.last_right_position > OVERFLOW_INDOCATOR && right_pose < -OVERFLOW_INDOCATOR) // positiv overflow
+					{
+						delta_right_pose = (right_pose - LONG_MIN) + (LONG_MAX - robot_state_.last_right_position);
+					}
+					else if(robot_state_.last_right_position < -OVERFLOW_INDOCATOR && right_pose > OVERFLOW_INDOCATOR) // negativ overflow
+					{
+						delta_right_pose = (right_pose - LONG_MAX) + (LONG_MIN - robot_state_.last_right_position);
+					}
+					else
+					{
+						delta_right_pose = right_pose - robot_state_.last_right_position;
+					}
 
-                    robot_state_.last_left_position = left_pose;
-                    robot_state_.last_right_position = right_pose;
+					robot_state_.last_left_position = left_pose;
+					robot_state_.last_right_position = right_pose;
 
-                    double delta_left = (double) delta_left_pose * robot_config_.raw_odometry_factor;
-                    double delta_right = (double) delta_right_pose * robot_config_.raw_odometry_factor;
+					double delta_left = (double) delta_left_pose * robot_config_.raw_odometry_factor;
+					double delta_right = (double) delta_right_pose * robot_config_.raw_odometry_factor;
 
-                    ROS_DEBUG_STREAM("NakoonElement::readCallback: delta_left= " << delta_left << " delta_right= " << delta_right);
+					ROS_DEBUG_STREAM("NakoonElement::readCallback: delta_left= " << delta_left << " delta_right= " << delta_right);
 
-                    double delta_trans = (delta_left + delta_right) / 2;
-                    double delta_rot = (delta_right - delta_left) / robot_config_.wheel_base;
-                    ros::Duration delta_t = now - robot_state_.last_msg_time;
+					double delta_trans = (delta_left + delta_right) / 2;
+					double delta_rot = (delta_right - delta_left) / robot_config_.wheel_base;
+					ros::Duration delta_t = now - robot_state_.last_msg_time;
 
-                    ROS_DEBUG_STREAM("NakoonElement::readCallback: delta_trans= " << delta_trans << " delta_rot= " << delta_rot);
+					ROS_DEBUG_STREAM("NakoonElement::readCallback: delta_trans= " << delta_trans << " delta_rot= " << delta_rot);
 
-                    double delta_x, delta_y;
-                    if(delta_rot >= 0.0005)
-                    {
-                        delta_x = -delta_trans/delta_rot * sin(robot_state_.theta) + delta_trans/delta_rot * sin(robot_state_.theta + delta_rot);
-                        delta_y =  delta_trans/delta_rot * cos(robot_state_.theta) - delta_trans/delta_rot * cos(robot_state_.theta + delta_rot);
-                    }
-                    else
-                    {
-                        delta_x = delta_trans * cos(robot_state_.theta);
-                        delta_y = delta_trans * sin(robot_state_.theta);
-                    }
+					double delta_x, delta_y;
+					if(delta_rot >= 0.0005)
+					{
+						delta_x = -delta_trans/delta_rot * sin(robot_state_.theta) + delta_trans/delta_rot * sin(robot_state_.theta + delta_rot);
+						delta_y =  delta_trans/delta_rot * cos(robot_state_.theta) - delta_trans/delta_rot * cos(robot_state_.theta + delta_rot);
+					}
+					else
+					{
+						delta_x = delta_trans * cos(robot_state_.theta);
+						delta_y = delta_trans * sin(robot_state_.theta);
+					}
 
-                    robot_state_.last_msg_time = now;
-                    robot_state_.x += delta_x;
-                    robot_state_.y += delta_y;
-                    robot_state_.theta += delta_rot;
-                    robot_state_.trans = delta_trans / delta_t.toSec();
-                    robot_state_.rot = delta_rot / delta_t.toSec();
+					robot_state_.last_msg_time = now;
+					robot_state_.x += delta_x;
+					robot_state_.y += delta_y;
+					robot_state_.theta += delta_rot;
+					robot_state_.trans = delta_trans / delta_t.toSec();
+					robot_state_.rot = delta_rot / delta_t.toSec();
 
-                    odometry_msg_.header.seq++;
-                    odometry_msg_.header.stamp = now;
-                    odometry_msg_.pose.pose.position.x = robot_state_.x;
-                    odometry_msg_.pose.pose.position.y = robot_state_.y;
-                    odometry_msg_.pose.pose.orientation = tf::createQuaternionMsgFromYaw(robot_state_.theta);
-                    odometry_msg_.twist.twist.linear.x = robot_state_.trans;
-                    odometry_msg_.twist.twist.angular.z = robot_state_.rot;
+					odometry_msg_.header.seq++;
+					odometry_msg_.header.stamp = now;
+					odometry_msg_.pose.pose.position.x = robot_state_.x;
+					odometry_msg_.pose.pose.position.y = robot_state_.y;
+					odometry_msg_.pose.pose.orientation = tf::createQuaternionMsgFromYaw(robot_state_.theta);
+					odometry_msg_.twist.twist.linear.x = robot_state_.trans;
+					odometry_msg_.twist.twist.angular.z = robot_state_.rot;
 
-                    odometry_pub_.publish(odometry_msg_);
+					odometry_pub_.publish(odometry_msg_);
 
-                    if(robot_config_.publish_tf)
-                    {
-                        odometry_tf_.header = odometry_msg_.header;
-                        odometry_tf_.transform.translation.x = robot_state_.x;
-                        odometry_tf_.transform.translation.y = robot_state_.y;
-                        odometry_tf_.transform.rotation = tf::createQuaternionMsgFromYaw(robot_state_.theta);
+					if(robot_config_.publish_tf)
+					{
+						odometry_tf_.header = odometry_msg_.header;
+						odometry_tf_.transform.translation.x = robot_state_.x;
+						odometry_tf_.transform.translation.y = robot_state_.y;
+						odometry_tf_.transform.rotation = tf::createQuaternionMsgFromYaw(robot_state_.theta);
 
-                        odometry_tf_broadcaster_.sendTransform(odometry_tf_);
-                    }
-                }
+						odometry_tf_broadcaster_.sendTransform(odometry_tf_);
+					}
+				}
 
-            }
-            else
-            {
-                ROS_WARN_STREAM(new_msg << " do not match " << reg_ex);
-            }
-        }
-        catch (boost::regex_error& ex)
-        {
-            ROS_FATAL_STREAM("NakoonElement::readCallback: " << "This should not happen! RegEx is not valid");
-        }
-    }
+			}
+			else
+			{
+				ROS_WARN_STREAM(new_msg << " do not match " << reg_ex);
+			}
+		}
+		catch (boost::regex_error& ex)
+		{
+			ROS_FATAL_STREAM("NakoonElement::readCallback: " << "This should not happen! RegEx is not valid");
+		}
+	}
 
-    boost::asio::async_read_until(serial_port_, buffer_, MESSAGE_DELIMITER, boost::bind(&NakoonElement::readCallback, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
-    */
+	boost::asio::async_read_until(serial_port_, buffer_, MESSAGE_DELIMITER, boost::bind(&NakoonElement::readCallback, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
+	*/
 }
 
-void NakoonElement::resetEncoders(void) {
-	buf[0] = 16;												// Command register
-	buf[1] = 32;												// command to set decoders back to zero
+void NakoonElement::resetEncoders(void)
+{
+	buf_[0] = 16;  // Command register
+	buf_[1] = 32;  // command to set decoders back to zero
 
-	if ((write(fd, buf, 2)) != 2) {
+	if ((write(fd_, buf_, 2)) != 2) {
 		printf("Error writing to i2c slave\n");
 		exit(1);
 	}
 }
 
-long NakoonElement::readEncoderValues (void) {
-
+long NakoonElement::readEncoderValues (void)
+{
 	long encoder1, encoder2;
 
-	buf[0] = 2;													// register for start of encoder values
+	buf_[0] = 2;  // register for start of encoder values
 
-	if ((write(fd, buf, 1)) != 1) {
+	if ((write(fd_, buf_, 1)) != 1)
+	{
 		printf("Error writing to i2c slave\n");
 		exit(1);
 	}
 
-	if (read(fd, buf, 8) != 8) {								// Read back 8 bytes for the encoder values into buf[]
+	// Read back 8 bytes for the encoder values into buf[]
+	if (read(fd_, buf_, 8) != 8)
+	{
 		printf("Unable to read from slave\n");
 		exit(1);
 	}
-	else {
-		encoder1 = (buf[0] <<24) + (buf[1] << 16) + (buf[2] << 8) + buf[3];	// Put encoder values together
-		encoder2 = (buf[4] <<24) + (buf[5] << 16) + (buf[6] << 8) + buf[7];
+	else
+	{
+		encoder1 = (buf_[0] << 24) + (buf_[1] << 16) + (buf_[2] << 8) + buf_[3];	// Put encoder values together
+		encoder2 = (buf_[4] << 24) + (buf_[5] << 16) + (buf_[6] << 8) + buf_[7];
 		printf("Encoder 1: %08lX   Encoder 2: %08lX\n",encoder1, encoder2);
 	}
 	return encoder1;
 }
 
 } // end namespace NakoonElement
-
-
-/*
-
-int main(int argc, char **argv)
-{
-	printf("**** MD25 test program ****\n");
-
-	if ((fd = open(fileName, O_RDWR)) < 0) {					// Open port for reading and writing
-		printf("Failed to open i2c port\n");
-		exit(1);
-	}
-
-	if (ioctl(fd, I2C_SLAVE, address) < 0) {					// Set the port options and set the address of the device we wish to speak to
-		printf("Unable to get bus access to talk to slave\n");
-		exit(1);
-	}
-
-	buf[0] = 13;												// This is the register we wish to read software version from
-
-	if ((write(fd, buf, 1)) != 1) {								// Send regiter to read software from from
-		printf("Error writing to i2c slave\n");
-		exit(1);
-	}
-
-	if (read(fd, buf, 1) != 1) {								// Read back data into buf[]
-		printf("Unable to read from slave\n");
-		exit(1);
-	}
-	else {
-		printf("Software version: %u\n", buf[0]);
-	}
-
-	resetEncoders();											// Reset the encoder values to 0
-
-	while(readEncoderValues() < 0x2000) {						// Check the value of encoder 1 and stop after it has traveled a set distance
-		 driveMotors();
-		 usleep(200000);										// This sleep just gives us a bit of time to read what was printed to the screen in driveMortors()
-	}
-
-	stopMotors();
-	return 0;
-}
-
-*/

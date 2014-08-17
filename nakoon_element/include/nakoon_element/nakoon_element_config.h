@@ -52,14 +52,12 @@ namespace NakoonElement
 
 struct NakoonElementConfig
 {
-    std::string port;
-    int32_t baud_rate;
+	std::string file_name;
+    int address;
 
     double odometry_rate;
     double cmd_rate;
     bool publish_tf;
-
-    int max_dead_man;
 
     double max_trans_velocity;
     double max_rot_velocity;
