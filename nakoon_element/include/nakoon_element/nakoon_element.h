@@ -90,9 +90,9 @@ protected:
     boost::asio::serial_port serial_port_;
 
     // new
-    int fd;							// File descrition
-    char *fileName = "/dev/i2c-1";	// Name of the port we will be using
-    int  address = 0x58;			// Address of MD25 shifted one bit
+    int fd;							// File descriptor
+    char* fileName;					// Name of the port we will be using
+    int  address;					// Address of MD25 shifted one bit
     unsigned char buf[10];			// Buffer for data being read/ written on the i2c bus
     // new
 

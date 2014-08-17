@@ -83,6 +83,12 @@ void NakoonElement::init(const NakoonElementConfig &robot_config)
 {
     robot_config_ = robot_config;
 
+    // new
+    fileName = "/dev/i2c-1";	// Name of the port we will be using
+    address = 0x58;			// Address of MD25 shifted one bit
+    // new
+
+
     try
     {
         odometry_msg_.header.frame_id = robot_config_.frame_id;
@@ -253,6 +259,7 @@ void NakoonElement::emergencyStop(bool stop)
  */
 void  NakoonElement::readCallback(const boost::system::error_code &error_code, std::size_t bytes_transferred)
 {
+	/*
     ros::Time now = ros::Time::now();
     if(error_code)
     {
@@ -382,6 +389,7 @@ void  NakoonElement::readCallback(const boost::system::error_code &error_code, s
     }
 
     boost::asio::async_read_until(serial_port_, buffer_, MESSAGE_DELIMITER, boost::bind(&NakoonElement::readCallback, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
+    */
 }
 
 /****************************************************************
