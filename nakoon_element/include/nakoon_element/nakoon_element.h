@@ -48,6 +48,18 @@
 #include <nakoon_element/nakoon_element_config.h>
 #include <nakoon_element/nakoon_element_state.h>
 
+// new
+#include <stdio.h>
+#include <stdlib.h>
+#include <linux/i2c-dev.h>
+#include <fcntl.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+// new
+
 #include <boost/asio.hpp>
 #include <boost/asio/serial_port.hpp>
 #include <boost/system/system_error.hpp>
@@ -76,6 +88,13 @@ protected:
 
     boost::asio::io_service io_service_;
     boost::asio::serial_port serial_port_;
+
+    // new
+    int fd;							// File descrition
+    char *fileName = "/dev/i2c-1";	// Name of the port we will be using
+    int  address = 0x58;			// Address of MD25 shifted one bit
+    unsigned char buf[10];			// Buffer for data being read/ written on the i2c bus
+    // new
 
     NakoonElementConfig robot_config_;
     NakoonElementState robot_state_;
@@ -121,6 +140,11 @@ protected:
     void resetErrors();
 
     void restartMotors();
+
+    long readEncoderValues(void); // Reads encoder data for both motors and displays to the screen
+    void resetEncoders(void);	  // Resets the encoders to 0
+    void driveMotors(void);		  // Drive the motors forwards
+    void stopMotors(void);		  // Stop the motors
 
 
 };

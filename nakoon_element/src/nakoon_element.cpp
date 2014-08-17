@@ -64,7 +64,6 @@ NakoonElement::NakoonElement(ros::NodeHandle nh) :
     robot_state_.x = 0.0;
     robot_state_.y = 0.0;
     robot_state_.theta = 0.0;
-
 }
 
 /****************************************************************
@@ -92,6 +91,7 @@ void NakoonElement::init(const NakoonElementConfig &robot_config)
         odometry_tf_.header.frame_id = robot_config_.frame_id;
         odometry_tf_.child_frame_id = robot_config_.child_frame_id;
 
+        /*
         serial_port_.open(robot_config_.port);
 
         serial_port_.set_option(boost::asio::serial_port::baud_rate(robot_config_.baud_rate));
@@ -115,6 +115,35 @@ void NakoonElement::init(const NakoonElementConfig &robot_config)
         boost::asio::async_read_until(serial_port_, buffer_, MESSAGE_DELIMITER, boost::bind(&NakoonElement::readCallback, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
 
         read_thread_ = boost::thread(boost::bind(&NakoonElement::run, this));
+        */
+
+    	if ((fd = open(fileName, O_RDWR)) < 0) {					// Open port for reading and writing
+    		ROS_ERROR("Failed to open i2c port\n");
+    		exit(1);
+    	}
+
+    	if (ioctl(fd, I2C_SLAVE, address) < 0) {					// Set the port options and set the address of the device we wish to speak to
+    		ROS_ERROR("Unable to get bus access to talk to slave\n");
+    		exit(1);
+    	}
+
+    	buf[0] = 13;												// This is the register we wish to read software version from
+
+    	if ((write(fd, buf, 1)) != 1) {								// Send regiter to read software from from
+    		ROS_ERROR("Error writing to i2c slave\n");
+    		exit(1);
+    	}
+
+    	if (read(fd, buf, 1) != 1) {								// Read back data into buf[]
+    		ROS_ERROR("Unable to read from slave\n");
+    		exit(1);
+    	}
+    	else {
+    		ROS_ERROR("Software version: %u\n", buf[0]);
+    	}
+
+    	resetEncoders();											// Reset the encoder values to 0
+
 
         odometry_pub_ = nh_.advertise<nav_msgs::Odometry>("odom", 10);
     }
@@ -149,7 +178,7 @@ void  NakoonElement::setVelocity(double trans, double rot)
         ROS_WARN_STREAM("NakoonElement::setVelocity: Rot Velocity to high: " << rot << ">" << robot_config_.max_rot_velocity);
     }
 
-    rot = rot * robot_config_.rotation_correction;
+    //rot = rot * robot_config_.rotation_correction;
 
     double vel_left  = trans - 0.5 * rot * robot_config_.wheel_base;
     double vel_right = trans + 0.5 * rot * robot_config_.wheel_base;
@@ -162,7 +191,12 @@ void  NakoonElement::setVelocity(double trans, double rot)
 
 void  NakoonElement::sendCmd()
 {
-    ++dead_man_counter_;
+	if (left_track_vel_ == 0 && right_track_vel_ == 0)
+		stopMotors();
+	else
+		driveMotors();
+	/*
+	++dead_man_counter_;
 
     if(emergency_stop_ || dead_man_counter_ >= robot_config_.max_dead_man)
     {
@@ -185,6 +219,7 @@ void  NakoonElement::sendCmd()
     {
         ROS_ERROR_STREAM("NakoonElement::setVelocity: " << "Unhandled exception!");
     }
+    */
 }
 
 /****************************************************************
@@ -402,4 +437,118 @@ void  NakoonElement::restartMotors()
     }
 }
 
+void NakoonElement::resetEncoders(void) {
+	buf[0] = 16;												// Command register
+	buf[1] = 32;												// command to set decoders back to zero
+
+	if ((write(fd, buf, 2)) != 2) {
+		printf("Error writing to i2c slave\n");
+		exit(1);
+	}
+}
+
+long NakoonElement::readEncoderValues (void) {
+
+	long encoder1, encoder2;
+
+	buf[0] = 2;													// register for start of encoder values
+
+	if ((write(fd, buf, 1)) != 1) {
+		printf("Error writing to i2c slave\n");
+		exit(1);
+	}
+
+	if (read(fd, buf, 8) != 8) {								// Read back 8 bytes for the encoder values into buf[]
+		printf("Unable to read from slave\n");
+		exit(1);
+	}
+	else {
+		encoder1 = (buf[0] <<24) + (buf[1] << 16) + (buf[2] << 8) + buf[3];	// Put encoder values together
+		encoder2 = (buf[4] <<24) + (buf[5] << 16) + (buf[6] << 8) + buf[7];
+		printf("Encoder 1: %08lX   Encoder 2: %08lX\n",encoder1, encoder2);
+	}
+	return encoder1;
+}
+
+void NakoonElement::driveMotors(void){
+	buf[0] = 0;													// Register to set speed of motor 1
+	buf[1] = 200;												// speed to be set
+
+	if ((write(fd, buf, 2)) != 2) {
+		printf("Error writing to i2c slave\n");
+		exit(1);
+	}
+
+	buf[0] = 1;													// motor 2 speed
+	buf[1] = 200;
+
+	if ((write(fd, buf, 2)) != 2) {
+		printf("Error writing to i2c slave\n");
+		exit(1);
+	}
+}
+
+void NakoonElement::stopMotors(void){
+	buf[0] = 0;
+	buf[1] = 128;												// A speed of 128 stops the motor
+
+	if ((write(fd, buf, 2)) != 2) {
+		printf("Error writing to i2c slave\n");
+		exit(1);
+	}
+
+	buf[0] = 1;
+	buf[1] = 128;
+
+	if ((write(fd, buf, 2)) != 2) {
+		printf("Error writing to i2c slave\n");
+		exit(1);
+	}
+}
+
 } // end namespace NakoonElement
+
+
+/*
+
+int main(int argc, char **argv)
+{
+	printf("**** MD25 test program ****\n");
+
+	if ((fd = open(fileName, O_RDWR)) < 0) {					// Open port for reading and writing
+		printf("Failed to open i2c port\n");
+		exit(1);
+	}
+
+	if (ioctl(fd, I2C_SLAVE, address) < 0) {					// Set the port options and set the address of the device we wish to speak to
+		printf("Unable to get bus access to talk to slave\n");
+		exit(1);
+	}
+
+	buf[0] = 13;												// This is the register we wish to read software version from
+
+	if ((write(fd, buf, 1)) != 1) {								// Send regiter to read software from from
+		printf("Error writing to i2c slave\n");
+		exit(1);
+	}
+
+	if (read(fd, buf, 1) != 1) {								// Read back data into buf[]
+		printf("Unable to read from slave\n");
+		exit(1);
+	}
+	else {
+		printf("Software version: %u\n", buf[0]);
+	}
+
+	resetEncoders();											// Reset the encoder values to 0
+
+	while(readEncoderValues() < 0x2000) {						// Check the value of encoder 1 and stop after it has traveled a set distance
+		 driveMotors();
+		 usleep(200000);										// This sleep just gives us a bit of time to read what was printed to the screen in driveMortors()
+	}
+
+	stopMotors();
+	return 0;
+}
+
+*/
