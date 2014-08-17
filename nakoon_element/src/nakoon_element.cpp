@@ -182,25 +182,20 @@ void  NakoonElement::setVelocity(double trans, double rot)
 
 void  NakoonElement::sendCmd()
 {
-	if (left_track_vel_ == 0 && right_track_vel_ == 0)
-		stopMotors();
-	else
-	{
-		buf[0] = 0;													// Register to set speed of motor 1
-		buf[1] = left_track_vel_;												// speed to be set
+	buf[0] = 0;													// Register to set speed of motor 1
+	buf[1] = left_track_vel_;												// speed to be set
 
-		if ((write(fd, buf, 2)) != 2) {
-			ROS_ERROR("Error writing to i2c slave\n");
-			exit(1);
-		}
+	if ((write(fd, buf, 2)) != 2) {
+		ROS_ERROR("Error writing to i2c slave\n");
+		exit(1);
+	}
 
-		buf[0] = 1;													// motor 2 speed
-		buf[1] = right_track_vel_;
+	buf[0] = 1;													// motor 2 speed
+	buf[1] = right_track_vel_;
 
-		if ((write(fd, buf, 2)) != 2) {
-			ROS_ERROR("Error writing to i2c slave\n");
-			exit(1);
-		}
+	if ((write(fd, buf, 2)) != 2) {
+		ROS_ERROR("Error writing to i2c slave\n");
+		exit(1);
 	}
 
 
