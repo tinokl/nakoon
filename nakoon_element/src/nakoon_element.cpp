@@ -97,32 +97,6 @@ void NakoonElement::init(const NakoonElementConfig &robot_config)
         odometry_tf_.header.frame_id = robot_config_.frame_id;
         odometry_tf_.child_frame_id = robot_config_.child_frame_id;
 
-        /*
-        serial_port_.open(robot_config_.port);
-
-        serial_port_.set_option(boost::asio::serial_port::baud_rate(robot_config_.baud_rate));
-        serial_port_.set_option(boost::asio::serial_port::parity(boost::asio::serial_port::parity::none));
-        serial_port_.set_option(boost::asio::serial_port::character_size(boost::asio::serial_port::character_size(8)));
-        serial_port_.set_option(boost::asio::serial_port::stop_bits(boost::asio::serial_port::stop_bits::one));
-        serial_port_.set_option(boost::asio::serial_port::flow_control(boost::asio::serial_port::flow_control::none));
-
-        ROS_INFO_STREAM("NakoonElement::init" << "Sucessfull connected to robot (" << robot_config_.port << ";" << robot_config_.baud_rate <<").");
-        ROS_DEBUG_STREAM("NakoonElement::init: Robot parameters:" << std::endl <<
-                         "publish_tf:" << robot_config_.publish_tf << std::endl <<
-                         "max_trans_velocity:" << robot_config_.max_trans_velocity << std::endl <<
-                         "max_rot_velocity:" << robot_config_.max_rot_velocity << std::endl <<
-                         "frame_id:" << robot_config_.frame_id << std::endl <<
-                         "child_frame_id:" << robot_config_.child_frame_id << std::endl <<
-                         "wheel_base:" << robot_config_.wheel_base << std::endl <<
-                         "rotation_correction:" << robot_config_.rotation_correction << std::endl <<
-                         "velocity_raw_factor:" << robot_config_.velocity_raw_factor << std::endl <<
-                         "raw_odometry_factor:" << robot_config_.raw_odometry_factor);
-
-        boost::asio::async_read_until(serial_port_, buffer_, MESSAGE_DELIMITER, boost::bind(&NakoonElement::readCallback, this, boost::asio::placeholders::error, boost::asio::placeholders::bytes_transferred));
-
-        read_thread_ = boost::thread(boost::bind(&NakoonElement::run, this));
-        */
-
     	if ((fd = open(fileName, O_RDWR)) < 0) {					// Open port for reading and writing
     		ROS_ERROR("Failed to open i2c port\n");
     		exit(1);
@@ -147,6 +121,16 @@ void NakoonElement::init(const NakoonElementConfig &robot_config)
     	else {
     		ROS_ERROR("Software version: %u\n", buf[0]);
     	}
+
+    	/*
+    	buf[0] = 15;												// Mode Register
+    	buf[1] = 1;												    // Set Mode to 1
+
+    	if ((write(fd, buf, 2)) != 2) {
+    		ROS_ERROR("Error writing to i2c slave\n");
+    		exit(1);
+    	}
+    	*/
 
     	resetEncoders();											// Reset the encoder values to 0
 
@@ -192,21 +176,36 @@ void  NakoonElement::setVelocity(double trans, double rot)
     left_track_vel_ =  (int32_t) (vel_left * robot_config_.velocity_raw_factor);
     right_track_vel_ =  (int32_t) (vel_right * robot_config_.velocity_raw_factor);
 
+    ROS_ERROR_STREAM("LEFT VEL: " << left_track_vel_);
+    ROS_ERROR_STREAM("RIGHT VEL: " << right_track_vel_);
+
     dead_man_counter_ = 0;
 }
 
 void  NakoonElement::sendCmd()
 {
 	if (left_track_vel_ == 0 && right_track_vel_ == 0)
-	{
-		ROS_ERROR("Stopping Motors");
 		stopMotors();
-	}
 	else
 	{
-		ROS_ERROR("Starting Motors");
-		driveMotors();
+		buf[0] = 0;													// Register to set speed of motor 1
+		buf[1] = 200;												// speed to be set
+
+		if ((write(fd, buf, 2)) != 2) {
+			ROS_ERROR("Error writing to i2c slave\n");
+			exit(1);
+		}
+
+		buf[0] = 1;													// motor 2 speed
+		buf[1] = 200;
+
+		if ((write(fd, buf, 2)) != 2) {
+			ROS_ERROR("Error writing to i2c slave\n");
+			exit(1);
+		}
 	}
+
+
 	/*
 	++dead_man_counter_;
 
