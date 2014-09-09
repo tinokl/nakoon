@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+  <node name="recognizer" pkg="pocketsphinx" type="recognizer.py" output="screen">
+    <param name="lm" value="$(find nakoon_sphinx)/config/nav_commands.lm"/>
+    <param name="dict" value="$(find nakoon_sphinx)/config/nav_commands.dic"/>
+  </node>
+  
+  <node name="sphinx_commands" pkg="nakoon_sphinx" type="voice_nav.py" output="screen"></node>
+
+</launch>

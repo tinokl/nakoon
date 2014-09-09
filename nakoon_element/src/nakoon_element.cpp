@@ -183,13 +183,13 @@ void  NakoonElement::setVelocity(double trans, double rot)
     if(std::abs(left_track_vel_) > 125)
     {
     	left_track_vel_ = 125 * left_track_vel_/std::abs(left_track_vel_);
-        ROS_WARN_STREAM("NakoonElement::setVelocity: Velocity Left to high: " << left_track_vel_ << ">" << "128");
+    	ROS_ERROR_STREAM("NakoonElement::setVelocity: Velocity Left to high: " << left_track_vel_ << ">" << "128");
     }
 
     if(std::abs(right_track_vel_) > 125)
     {
     	right_track_vel_ = 125 * right_track_vel_/std::abs(right_track_vel_);
-        ROS_WARN_STREAM("NakoonElement::setVelocity: Velocity Right to high: " << right_track_vel_ << ">" << "128");
+    	ROS_ERROR_STREAM("NakoonElement::setVelocity: Velocity Right to high: " << right_track_vel_ << ">" << "128");
     }
 
     dead_man_counter_ = 0;
