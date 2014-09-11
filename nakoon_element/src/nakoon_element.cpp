@@ -160,14 +160,14 @@ void  NakoonElement::setVelocity(double trans, double rot)
 
     if(std::abs(trans) > robot_config_.max_trans_velocity)
     {
-    	trans = robot_config_.max_trans_velocity * trans/std::abs(trans);
         ROS_WARN_STREAM("NakoonElement::setVelocity: Trans Velocity to high: " << trans << ">" << robot_config_.max_trans_velocity);
+    	trans = robot_config_.max_trans_velocity * trans/std::abs(trans);
     }
 
     if(std::abs(rot) > robot_config_.max_rot_velocity)
     {
-    	rot = robot_config_.max_rot_velocity * rot/std::abs(rot);
         ROS_WARN_STREAM("NakoonElement::setVelocity: Rot Velocity to high: " << rot << ">" << robot_config_.max_trans_velocity);
+    	rot = robot_config_.max_rot_velocity * rot/std::abs(rot);
     }
 
     rot = rot * robot_config_.rotation_correction;
@@ -178,8 +178,8 @@ void  NakoonElement::setVelocity(double trans, double rot)
     left_track_vel_ =  (int32_t) (vel_left * robot_config_.velocity_raw_factor);
     right_track_vel_ =  (int32_t) (vel_right * robot_config_.velocity_raw_factor);
 
-    ROS_ERROR_STREAM("LEFT VEL: " << left_track_vel_);
-    ROS_ERROR_STREAM("RIGHT VEL: " << right_track_vel_);
+    //ROS_ERROR_STREAM("LEFT VEL: " << left_track_vel_);
+    //ROS_ERROR_STREAM("RIGHT VEL: " << right_track_vel_);
 
     if(std::abs(left_track_vel_) > 125)
     {

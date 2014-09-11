@@ -5,8 +5,8 @@
         <param name="publish_tf"           type="bool"    value="false"/>
         <param name="max_trans_velocity"   type="double"  value="1.0"/>
         <param name="max_rot_velocity"     type="double"  value="1.0"/>
-        <param name="wheel_base"           type="double"  value="0.25"/>
-        <param name="velocity_raw_factor"  type="double"  value="300.0"/>
+        <param name="wheel_base"           type="double"  value="1.0"/>
+        <param name="velocity_raw_factor"  type="double"  value="250.0"/>
         <param name="raw_odometry_factor"  type="double"  value="0.0000016129"/>
         <param name="frame_id"             type="string"  value="/odom"/>
         <param name="child_frame_id"       type="string"  value="/robot_footprint"/>
