@@ -180,15 +180,15 @@ void  NakoonElement::setVelocity(double trans, double rot)
     //double vel_left  = trans;
     //double vel_right = trans;
 
-    if (rot > 0.5)
+    if (rot > 0 && rot != 0)
     {
-        vel_left  = vel_left * 0.5;
-        vel_right = vel_right;
+        vel_left  = vel_left * 0.8;
+        //vel_right = vel_right;
     }
-    else if (rot < -0.5)
+    else if (rot < 0 && rot != 0)
     {
-        vel_left  = vel_left;
-        vel_right = vel_right * 0.5;
+        //vel_left  = vel_left;
+        vel_right = vel_right * 0.8;
     }
 
     left_track_vel_ =  (int32_t) (vel_left * robot_config_.velocity_raw_factor);
