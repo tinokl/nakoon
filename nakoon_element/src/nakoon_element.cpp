@@ -171,9 +171,22 @@ void  NakoonElement::setVelocity(double trans, double rot)
     }
 
     rot = rot * robot_config_.rotation_correction;
+    //double vel_left  = trans + 1.0 * rot * robot_config_.wheel_base;
+    //double vel_right = trans + 1.0 * rot * robot_config_.wheel_base;
 
-    double vel_left  = trans - 1.0 * rot * robot_config_.wheel_base;
-    double vel_right = trans + 1.0 * rot * robot_config_.wheel_base;
+    double vel_left  = trans;
+    double vel_right = trans;
+
+    if (rot > 0)
+    {
+        vel_left  = trans * 0.5;
+        vel_right = trans;
+    }
+    else
+    {
+        vel_left  = trans;
+        vel_right = trans * 0.5;
+    }
 
     left_track_vel_ =  (int32_t) (vel_left * robot_config_.velocity_raw_factor);
     right_track_vel_ =  (int32_t) (vel_right * robot_config_.velocity_raw_factor);
