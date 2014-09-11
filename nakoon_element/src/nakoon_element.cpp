@@ -156,6 +156,7 @@ void  NakoonElement::setVelocity(double trans, double rot)
 	// -128 (Full Reverse)
 	// 0 (Stop)
 	// 127 (Full Forward).
+	trans = trans * -1.0; // otherwise wrong direction
 
     if(std::abs(trans) > robot_config_.max_trans_velocity)
     {
@@ -171,8 +172,8 @@ void  NakoonElement::setVelocity(double trans, double rot)
 
     rot = rot * robot_config_.rotation_correction;
 
-    double vel_left  = trans - 0.5 * rot * robot_config_.wheel_base;
-    double vel_right = trans + 0.5 * rot * robot_config_.wheel_base;
+    double vel_left  = trans - 1.0 * rot * robot_config_.wheel_base;
+    double vel_right = trans + 1.0 * rot * robot_config_.wheel_base;
 
     left_track_vel_ =  (int32_t) (vel_left * robot_config_.velocity_raw_factor);
     right_track_vel_ =  (int32_t) (vel_right * robot_config_.velocity_raw_factor);
