@@ -191,8 +191,8 @@ void  NakoonElement::setVelocity(double trans, double rot)
     left_track_vel_ =  (int32_t) (vel_left * robot_config_.velocity_raw_factor);
     right_track_vel_ =  (int32_t) (vel_right * robot_config_.velocity_raw_factor);
 
-    //ROS_ERROR_STREAM("LEFT VEL: " << left_track_vel_);
-    //ROS_ERROR_STREAM("RIGHT VEL: " << right_track_vel_);
+    ROS_ERROR_STREAM("LEFT VEL: " << left_track_vel_);
+    ROS_ERROR_STREAM("RIGHT VEL: " << right_track_vel_);
 
     if(std::abs(left_track_vel_) > 125)
     {
